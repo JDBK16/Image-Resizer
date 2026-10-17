@@ -63,7 +63,7 @@ marked = mark_pixels(image, horizontal_pixels)
 
 
 while True == False:
-    hz = vt = bt = None
+    hz = vt = None
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     laplacian = cv2.Laplacian(gray, cv2.CV_64F, ksize=3)
     current_size = list(image.shape[:2])
