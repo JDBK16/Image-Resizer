@@ -49,12 +49,24 @@ for row in range(sobelx.shape[0]):
         gaps.append(gap)
     row_gaps.append(max(gaps, key=len))
     
+mins = []
+for row in range(len(row_gaps)):
+    pixels = gray[row][row_gaps[row][0]:row_gaps[row][-1]]
+    dif = min_dif = abs(pixels[0] - pixels[1])
+    min_pos = 0
+    for i in range(1, len(pixels)):
+        dif = abs(pixels[i] - pixels[i-1])
+        if i < len(pixels) - 1:
+            dif += abs(pixels[i] - pixels[i+1])
+            dif = dif // 2
+        if dif < min_dif:
+            min_dif = dif
+            min_pos = i
+    mins.append(min_pos)
+    
+for row, col in enumerate(mins):
+    image[row][col] = [0, 0, 255]
 
-red = image.copy()
-for row, col in enumerate(row_gaps):
-    for i in col:
-        red[row][i] = [0, 0, 255]
 
-            
-show_image(red) 
-        
+    
+show_image(image)
