@@ -28,6 +28,15 @@ gray = cv2.cvtColor(gaussian, cv2.COLOR_BGR2GRAY)
 sobelx = cv2.Sobel(gray,cv2.CV_64F,1,0,ksize=3)
 
 
+sobelXY = cv2.Sobel(image, cv2.CV_64F, 1, 1, ksize=5)
+sobelXY = cv2.normalize(sobelXY, 
+                dst = sobelXY, 
+                alpha = 0, 
+                beta = 1, 
+                norm_type = cv2.NORM_MINMAX, 
+                dtype = cv2.CV_32F)
+show_image(sobelXY)
+
 def remove(image, pixels, axis):
     if axis == 0:
         new_image = []
@@ -47,7 +56,7 @@ def mark_red(image, pixels, axis):
     
     return red
 
-def shallowest(gray, pixels, axis):
+def shallowest(gray, pixels, n, axis):
     if axis == 0:
         mins = []
         for row, col in enumerate(pixels):
@@ -85,7 +94,7 @@ def main(sobelx, image, gray):
             gaps.append(gap)
         row_gaps.append(max(gaps, key=len))
         
-    mins = shallowest(gray, row_gaps, 0)
+    mins = shallowest(gray, row_gaps, 10, 0)
         
     return remove(image, mins, 0), mark_red(image, mins, 0), mark_red(image, row_gaps, 0)
 
@@ -99,3 +108,4 @@ for i in range(0, 1):
 cv2.imwrite("images/result.png", result)
 cv2.imwrite("images/red.png", red)
 cv2.imwrite("images/gaps.png", gaps)
+cv2.imwrite("images/sobel.png", sobelx)
