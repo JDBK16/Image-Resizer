@@ -31,23 +31,31 @@ sobelY = cv2.normalize(sobelY,
                 norm_type = cv2.NORM_MINMAX, 
                 dtype = cv2.CV_32F)
 
-def carve(sobleY):
-    seams = {}
-    cost = {}
-    for col in range(sobleY.shape[1]):
-        seams[(0, col)] = -1
-        cost[(0, col)] = sobleY[0][col]
+def find_seam(image, seams, pixel):
+    if pixel[1] == image.shape[1]:
+        seams[(pixel[0], pixel[1])] = [image[pixel[0]][pixel[1]], None]
+        return seams, pixel
+    seams, best = find_seam(image, seams, (pixel[0] + 1, pixel[1]))
+    if pixel[1] > 0:
+        seams, left = find_seam(image, seams, (pixel[0] + 1, pixel[1] - 1))
+        if seams[left][0] < seams[best][0]:
+            best = left
+    if pixel[1] < image.shape[1]:
+        seams, right = find_seam(image, seams, (pixel[0] + 1, pixel[1] + 1))
+        if seams[right][0] < seams[best][0]:
+            best = right
+    return seams, best
+
     
-    for row in range(0, sobleY.shape[0]):
-        for col in range(sobleY.shape[1]):
-            left = right = None
-            if col != 0:
-                left = sobleY[row+1][col-1]
-            if col != sobleY.shape[1]-1:
-                right = sobleY[row+1][col+1]
-            middle = sobleY[row+1][col]
-            
-            if middle <= (left+right)//2:
-                cost[(row+1, col+1)]
-            
-carve(sobelY)
+def carve(image):
+    seams = {}
+    for col in range(0, image.shape[1]):
+        cost = image[0, col]
+        seams, next = find_seam(image, seams, (0, col))
+        seams[(0, col)] = [cost + seams[next][0], seams[next][1]]
+        
+    return seams
+        
+print("hi")
+seams = carve(sobelY)
+print(seams)
