@@ -22,14 +22,12 @@ if expected_size[0] > current_size[0] or expected_size[1] > current_size[1]:
 def show_image(image):
     cv2.imshow('image',image)
     cv2.waitKey(0)
-
-sobelY = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=5)
-sobelY = cv2.normalize(sobelY, 
-                dst = sobelY, 
-                alpha = 0, 
-                beta = 1, 
-                norm_type = cv2.NORM_MINMAX, 
-                dtype = cv2.CV_32F)
+    
+def show_seam_and_carve(image1, image2):
+    combined = np.concatenate((image1, image2), axis=1)
+    cv2.imshow('Images side by side', combined)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 def find_seam(image, seams, pixel):
     # If pixel already in minimum seam
@@ -38,7 +36,7 @@ def find_seam(image, seams, pixel):
     
     # If pixel in bottom column i.e. end of seam
     if pixel[0] == image.shape[0] - 1:
-        seams[pixel] = [sum(image[pixel[0]][pixel[1]]), None]
+        seams[pixel] = [image[pixel[0]][pixel[1]], None]
         return seams
     
     # Initialise next pixels in seam
@@ -61,26 +59,60 @@ def find_seam(image, seams, pixel):
             if seams[best][0] > seams[option][0]:
                 best = option
                 
-    seams[pixel] = [sum(image[pixel[0]][pixel[1]]) + seams[best][0], best]    
+    seams[pixel] = [image[pixel[0]][pixel[1]] + seams[best][0], best]    
     return seams
 
     
 def carve(image):
     seams = {}
-    seams = find_seam(image, seams, (0, image.shape[1]//2))
+    for col in range(image.shape[1]):
+        seams = find_seam(image, seams, (0, col))
         
     return seams
         
-seams = carve(sobelY)
 
-max_cost = seams[max(seams, key=lambda k: seams[k][0])][0]
+def remove(image, seams, start):
+    new_image = []
+    current = start
+    while current is not None:
+        row, col = current
 
-seam_image = image.copy()
-current = (0, image.shape[1]//2)
-next = seams[current][1]
-while next != None:
-    cur_red = seam_image[current[0], current[1]]
-    seam_image[current[0], current[1]] = [0, 0, 255*seams[current][0]/max_cost]
-    current, next = next, seams[next][1]
-            
-show_image(seam_image)
+        new_row = np.delete(image[row], col, axis=0)
+        new_image.append(new_row)
+
+        current = seams[current][1]
+
+    return np.stack(new_image, axis=0)
+
+def paint_red(image, seams, start):
+    current = start
+    next = seams[current][1]
+    while next != None:
+        image[current[0], current[1]] = [0, 0, 255]
+        current, next = next, seams[next][1]
+    return image
+
+def energy_map(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    sobelX = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+    sobelY = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+
+    energy = np.sqrt(sobelX**2 + sobelY**2)
+    energy = energy**2
+    return energy
+
+while image.shape[1] > expected_size[1]:
+    energy = energy_map(image)
+    seams = carve(energy)
+    min_coord = min(
+        (coord for coord in seams if coord[0] == 0),
+        key=lambda coord: seams[coord][0]
+    )
+    red_seam_image = paint_red(image.copy(), seams, min_coord)
+    cut_seam_image = remove(image, seams, min_coord)
+    #show_seam_and_carve(red_seam_image, cut_seam_image)
+    image = cut_seam_image
+    print(image.shape[1], expected_size[1])
+
+cv2.imwrite("images/result.png", cut_seam_image)
+cv2.imwrite("images/red.png", red_seam_image)
