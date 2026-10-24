@@ -76,4 +76,11 @@ seams = carve(sobelY)
 max_cost = seams[max(seams, key=lambda k: seams[k][0])][0]
 
 seam_image = image.copy()
-print(image.shape)
+current = (0, image.shape[1]//2)
+next = seams[current][1]
+while next != None:
+    cur_red = seam_image[current[0], current[1]]
+    seam_image[current[0], current[1]] = [0, 0, 255*seams[current][0]/max_cost]
+    current, next = next, seams[next][1]
+            
+show_image(seam_image)
