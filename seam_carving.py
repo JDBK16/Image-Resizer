@@ -32,30 +32,48 @@ sobelY = cv2.normalize(sobelY,
                 dtype = cv2.CV_32F)
 
 def find_seam(image, seams, pixel):
-    if pixel[1] == image.shape[1]:
-        seams[(pixel[0], pixel[1])] = [image[pixel[0]][pixel[1]], None]
-        return seams, pixel
-    seams, best = find_seam(image, seams, (pixel[0] + 1, pixel[1]))
-    if pixel[1] > 0:
-        seams, left = find_seam(image, seams, (pixel[0] + 1, pixel[1] - 1))
-        if seams[left][0] < seams[best][0]:
-            best = left
-    if pixel[1] < image.shape[1]:
-        seams, right = find_seam(image, seams, (pixel[0] + 1, pixel[1] + 1))
-        if seams[right][0] < seams[best][0]:
-            best = right
-    return seams, best
+    # If pixel already in minimum seam
+    if pixel in seams:
+        return seams
+    
+    # If pixel in bottom column i.e. end of seam
+    if pixel[0] == image.shape[0] - 1:
+        seams[pixel] = [sum(image[pixel[0]][pixel[1]]), None]
+        return seams
+    
+    # Initialise next pixels in seam
+    next_left = (pixel[0] + 1, pixel[1] - 1)
+    next_middle = (pixel[0] + 1, pixel[1])
+    next_right = (pixel[0] + 1, pixel[1] + 1)
+    
+    # Calculate next pixels in seam
+    if next_left[1] >= 0:
+        seams = find_seam(image, seams, next_left)
+    seams = find_seam(image, seams, next_middle)
+    if next_right[1] < image.shape[1]:
+        seams = find_seam(image, seams, next_right)
+        
+    # Choose best path
+    options = [next_left, next_right]
+    best = next_middle
+    for option in options:
+        if option[1] >= 0 and option[1] < image.shape[1]:
+            if seams[best][0] > seams[option][0]:
+                best = option
+                
+    seams[pixel] = [sum(image[pixel[0]][pixel[1]]) + seams[best][0], best]    
+    return seams
 
     
 def carve(image):
     seams = {}
-    for col in range(0, image.shape[1]):
-        cost = image[0, col]
-        seams, next = find_seam(image, seams, (0, col))
-        seams[(0, col)] = [cost + seams[next][0], seams[next][1]]
+    seams = find_seam(image, seams, (0, image.shape[1]//2))
         
     return seams
         
-print("hi")
 seams = carve(sobelY)
-print(seams)
+
+max_cost = seams[max(seams, key=lambda k: seams[k][0])][0]
+
+seam_image = image.copy()
+print(image.shape)
